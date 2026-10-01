@@ -1,0 +1,60 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fxterminal"
+version = "0.1.0"
+description = "AI-powered FX research terminal (research tool, not financial advice)"
+readme = "README.md"
+requires-python = ">=3.11"
+# Runtime dependencies are pinned in requirements.txt (generated from a verified
+# install). The ranges below are the compatibility contract; reinstall from
+# requirements.txt for reproducible environments.
+dependencies = [
+    "fastapi>=0.115,<1",
+    "uvicorn[standard]>=0.32,<1",
+    "pydantic>=2.9,<3",
+    "pydantic-settings>=2.6,<3",
+    "sqlalchemy[asyncio]>=2.0,<3",
+    "alembic>=1.14,<2",
+    "asyncpg>=0.30,<1",
+    "aiosqlite>=0.20,<1",
+    "structlog>=24.4,<27",
+    "httpx>=0.28,<1",
+    "redis>=5.2,<9",
+    "anthropic>=0.52,<2",
+    "typer>=0.15,<1",
+    "python-dotenv>=1.0,<2",
+    "feedparser>=6.0,<7",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3,<10",
+    "pytest-asyncio>=0.24,<2",
+    "ruff>=0.8,<1",
+    "ipython>=8,<10",
+    "pgserver>=0.1,<1",  # embedded Postgres for local dev without Docker
+]
+
+[project.scripts]
+fxterminal = "fxterminal.cli:app"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+fxterminal = ["api/static/*.html"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "ASYNC", "RUF"]

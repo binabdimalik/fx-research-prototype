@@ -1,0 +1,35 @@
+# Optional local infrastructure. Everything also runs without Docker
+# (SQLite + no Redis) for development and tests.
+#
+# Verify current image tags before production use:
+#   https://hub.docker.com/r/timescale/timescaledb-ha  (includes pgvector)
+#   https://hub.docker.com/_/redis
+services:
+  db:
+    image: timescale/timescaledb-ha:pg16
+    environment:
+      POSTGRES_USER: fxterminal
+      POSTGRES_PASSWORD: fxterminal
+      POSTGRES_DB: fxterminal
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/home/postgres/pgdata/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fxterminal -d fxterminal"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  pgdata:

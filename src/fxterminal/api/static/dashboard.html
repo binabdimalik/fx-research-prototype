@@ -1,0 +1,823 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>fxterminal</title>
+    <style>
+      :root {
+        --bg: #0b0f16;
+        --panel: #111827;
+        --panel2: #0d1420;
+        --border: #1e293b;
+        --border-soft: #17212f;
+        --text: #e6edf7;
+        --dim: #7c8ba1;
+        --faint: #55657d;
+        --green: #34d399;
+        --green-dim: rgba(52, 211, 153, 0.13);
+        --red: #f87171;
+        --red-dim: rgba(248, 113, 113, 0.13);
+        --amber: #fbbf24;
+        --accent: #38bdf8;
+        --accent-dim: rgba(56, 189, 248, 0.13);
+        --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+      }
+      body {
+        background: var(--bg)
+          radial-gradient(1200px 480px at 75% -8%, rgba(56, 189, 248, 0.06), transparent);
+        color: var(--text);
+        font:
+          13px/1.55 system-ui,
+          -apple-system,
+          "Segoe UI",
+          Roboto,
+          Inter,
+          sans-serif;
+        font-variant-numeric: tabular-nums;
+        padding: 18px 22px 28px;
+        max-width: 1480px;
+        margin: 0 auto;
+      }
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+      a:hover {
+        color: var(--accent);
+        text-decoration: underline;
+      }
+      ::placeholder {
+        color: var(--faint);
+      }
+      ::-webkit-scrollbar {
+        width: 8px;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #233050;
+        border-radius: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+
+      /* ---------- header ---------- */
+      header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 14px;
+        border-bottom: 1px solid var(--border);
+        padding: 8px 0 14px;
+        margin-bottom: 18px;
+        position: sticky;
+        top: 0;
+        background: var(--bg);
+        z-index: 20;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 11px;
+      }
+      .logo {
+        width: 30px;
+        height: 30px;
+        border-radius: 8px;
+        background: linear-gradient(135deg, var(--accent), #0ea5e9);
+        box-shadow: 0 0 14px rgba(56, 189, 248, 0.35);
+        position: relative;
+        flex: none;
+      }
+      .logo::before {
+        content: "fx";
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        color: #04121e;
+        font-weight: 800;
+        font-size: 13px;
+        letter-spacing: -0.02em;
+      }
+      h1 {
+        font-size: 19px;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+        color: var(--text);
+      }
+      .disclaimer {
+        color: var(--faint);
+        font-size: 11.5px;
+        margin-top: 2px;
+      }
+      .clock-wrap {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .live-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--green);
+        box-shadow: 0 0 8px var(--green);
+        animation: pulse 2.2s ease-in-out infinite;
+      }
+      @keyframes pulse {
+        50% {
+          opacity: 0.4;
+        }
+      }
+      #clock {
+        font-family: var(--mono);
+        font-size: 11.5px;
+        color: var(--dim);
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        padding: 5px 12px;
+        background: var(--panel);
+      }
+
+      /* ---------- cards ---------- */
+      .grid {
+        display: grid;
+        gap: 14px;
+        grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+      }
+      .card {
+        background: linear-gradient(180deg, #121a27, #0f1521);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 14px 16px;
+        box-shadow:
+          0 1px 0 rgba(255, 255, 255, 0.02) inset,
+          0 8px 24px rgba(0, 0, 0, 0.28);
+        transition: border-color 0.15s ease;
+      }
+      .card:hover {
+        border-color: #2a3d5c;
+      }
+      .card h2 {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: var(--faint);
+        margin-bottom: 4px;
+        padding-bottom: 9px;
+        border-bottom: 1px solid var(--border-soft);
+      }
+      /* scrollable card body — fixed-height dashboard feel instead of one
+         long ragged page; header stays put while rows scroll */
+      .body {
+        max-height: 380px;
+        overflow-y: auto;
+        padding: 8px 6px 2px 0;
+        scrollbar-gutter: stable;
+      }
+
+      /* ---------- shared bits ---------- */
+      .pos {
+        color: var(--green);
+      }
+      .neg {
+        color: var(--red);
+      }
+      .num {
+        font-family: var(--mono);
+        font-size: 12px;
+      }
+      .row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
+        padding: 5px 0;
+        border-bottom: 1px solid var(--border-soft);
+      }
+      .row:last-child {
+        border-bottom: none;
+      }
+      .row .main {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        min-width: 0;
+      }
+      .tag {
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+        padding: 2px 8px;
+        border-radius: 999px;
+        background: #1c2537;
+        color: #9fb0c6;
+        white-space: nowrap;
+      }
+      .tag.long,
+      .tag.hawk {
+        background: var(--green-dim);
+        color: var(--green);
+      }
+      .tag.short,
+      .tag.dov {
+        background: var(--red-dim);
+        color: var(--red);
+      }
+      .tag.neutral {
+        background: #1c2537;
+        color: var(--dim);
+      }
+      .tag.src {
+        background: var(--accent-dim);
+        color: var(--accent);
+      }
+      .tag.conf {
+        background: transparent;
+        border: 1px solid var(--border);
+        color: var(--faint);
+      }
+      .tag.stale {
+        background: var(--red-dim);
+        color: var(--red);
+        border: 1px solid var(--red);
+      }
+      .tag.fresh {
+        background: var(--green-dim);
+        color: var(--green);
+      }
+      .tag.mkt {
+        background: transparent;
+        border: 1px solid var(--border);
+        color: var(--dim);
+      }
+      #healthbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+        padding: 8px 0 12px;
+        font-size: 11px;
+        color: var(--faint);
+      }
+      #healthbar .feed {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+      }
+      .ev {
+        color: var(--dim);
+        font-size: 11.5px;
+        margin: 3px 0 7px;
+        padding-left: 9px;
+        border-left: 2px solid #1e2c42;
+      }
+      .muted {
+        color: var(--dim);
+        font-size: 11.5px;
+      }
+      .section-note {
+        font-size: 11.5px;
+        color: var(--faint);
+        margin-top: 10px;
+      }
+
+      /* ---------- strength bars ---------- */
+      .bar {
+        height: 7px;
+        border-radius: 4px;
+        background: #1a2333;
+        position: relative;
+        margin: 6px 0 10px;
+      }
+      .bar::after {
+        content: "";
+        position: absolute;
+        left: 50%;
+        top: -1px;
+        bottom: -1px;
+        width: 1px;
+        background: #33445f;
+      }
+      .bar > span {
+        position: absolute;
+        height: 100%;
+        border-radius: 4px;
+      }
+      .strength-cur {
+        font-weight: 700;
+        font-size: 13px;
+        letter-spacing: 0.02em;
+      }
+
+      /* ---------- themes ---------- */
+      .theme-item {
+        padding: 7px 0;
+        border-bottom: 1px solid var(--border-soft);
+      }
+      .theme-item:last-child {
+        border-bottom: none;
+      }
+      .theme-head {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        flex-wrap: wrap;
+      }
+
+      /* ---------- docs ---------- */
+      .doc {
+        padding: 8px 0;
+        border-bottom: 1px solid var(--border-soft);
+      }
+      .doc:last-child {
+        border-bottom: none;
+      }
+      .doc-title {
+        display: block;
+        font-size: 12.5px;
+        line-height: 1.4;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .doc-meta {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-top: 4px;
+      }
+      .doc-meta .muted {
+        margin-left: auto;
+      }
+
+      /* ---------- trade ideas ---------- */
+      .idea {
+        border-left: 3px solid var(--accent);
+        padding: 10px 12px;
+        margin-bottom: 12px;
+        background: var(--panel2);
+        border-radius: 0 9px 9px 0;
+      }
+      .idea.short {
+        border-left-color: var(--red);
+      }
+      .idea.long {
+        border-left-color: var(--green);
+      }
+      .idea-head {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        flex-wrap: wrap;
+      }
+      .idea-pair {
+        font-weight: 700;
+        font-size: 13.5px;
+        letter-spacing: 0.02em;
+      }
+      .levels {
+        display: flex;
+        gap: 18px;
+        flex-wrap: wrap;
+        margin: 8px 0 6px;
+        font-family: var(--mono);
+        font-size: 11.5px;
+      }
+      .levels label {
+        display: block;
+        font-family: inherit;
+        font-size: 9px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--faint);
+        margin-bottom: 1px;
+      }
+      .levels b {
+        color: var(--text);
+        font-weight: 600;
+      }
+      .rationale {
+        font-size: 12.5px;
+        color: var(--text);
+        margin-top: 4px;
+        line-height: 1.5;
+        display: -webkit-box;
+        -webkit-line-clamp: 4;
+        line-clamp: 4;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
+      .risk {
+        color: var(--amber);
+        font-size: 11.5px;
+        margin-top: 3px;
+      }
+      .idea .note {
+        color: var(--faint);
+        font-size: 11px;
+        margin-top: 5px;
+      }
+
+      /* ---------- chat ---------- */
+      #chat-log {
+        max-height: 330px;
+        overflow-y: auto;
+        margin-bottom: 12px;
+        padding: 2px 4px 2px 0;
+      }
+      .msg {
+        padding: 9px 13px;
+        margin: 7px 0;
+        border-radius: 10px;
+        white-space: pre-wrap;
+        font-size: 12.5px;
+        line-height: 1.55;
+      }
+      .msg.user {
+        background: #173147;
+        border: 1px solid #1f4468;
+        margin-left: 48px;
+        border-bottom-right-radius: 4px;
+      }
+      .msg.bot {
+        background: #121b29;
+        border: 1px solid var(--border-soft);
+        margin-right: 48px;
+        border-bottom-left-radius: 4px;
+      }
+      .msg.pending {
+        color: var(--faint);
+        font-style: italic;
+      }
+      #chat-form {
+        display: flex;
+        gap: 8px;
+      }
+      #chat-input {
+        flex: 1;
+        background: var(--panel2);
+        border: 1px solid var(--border);
+        color: var(--text);
+        border-radius: 8px;
+        padding: 9px 12px;
+        font: inherit;
+        outline: none;
+        transition:
+          border-color 0.15s,
+          box-shadow 0.15s;
+      }
+      #chat-input:focus {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
+      }
+      button {
+        background: var(--accent);
+        border: none;
+        color: #04121e;
+        border-radius: 8px;
+        padding: 9px 16px;
+        font: inherit;
+        font-weight: 700;
+        cursor: pointer;
+        transition: filter 0.15s;
+      }
+      button:hover {
+        filter: brightness(1.1);
+      }
+      button:disabled {
+        opacity: 0.5;
+        cursor: default;
+      }
+      select {
+        background: var(--panel2);
+        color: var(--text);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 4px 8px;
+        font-size: 11px;
+        font-family: inherit;
+      }
+
+      @media (max-width: 860px) {
+        body {
+          padding: 12px 14px 20px;
+        }
+        header {
+          flex-wrap: wrap;
+        }
+        .body {
+          max-height: 300px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="brand">
+        <span class="logo" aria-hidden="true"></span>
+        <div>
+          <h1>fxterminal</h1>
+          <div class="disclaimer">
+            Research tool — not financial advice. All outputs deterministic or
+            LLM-cited.
+          </div>
+        </div>
+      </div>
+      <div class="clock-wrap">
+        <span class="live-dot" title="live"></span>
+        <span id="clock"></span>
+      </div>
+    </header>
+
+    <div id="healthbar" class="muted">checking data health…</div>
+
+    <div class="grid">
+      <div class="card" id="strength">
+        <h2>Currency strength</h2>
+        <div id="strength-body" class="body"><span class="muted">loading…</span></div>
+      </div>
+
+      <div class="card" id="stances">
+        <h2>Central-bank stance</h2>
+        <div id="stances-body" class="body"><span class="muted">loading…</span></div>
+      </div>
+
+      <div class="card" id="themes">
+        <h2>Themes</h2>
+        <div id="themes-body" class="body"><span class="muted">loading…</span></div>
+      </div>
+
+      <div class="card" id="ideas">
+        <h2>Trade ideas</h2>
+        <div id="ideas-body" class="body"><span class="muted">loading…</span></div>
+      </div>
+
+      <div class="card" id="docs-card">
+        <h2>
+          Recent documents
+          <select id="doc-type" onchange="loadDocs()">
+            <option value="">all</option>
+            <option value="statement">statements</option>
+            <option value="minutes">minutes</option>
+            <option value="news">news</option>
+            <option value="speech">speeches</option>
+          </select>
+        </h2>
+        <div id="docs-body" class="body"><span class="muted">loading…</span></div>
+      </div>
+
+      <div class="card" id="chat">
+        <h2>Analyst chat</h2>
+        <div id="chat-log">
+          <div class="msg bot">
+            Ask about stored strength, stances, themes, ideas or documents.
+            Answers cite stored data only.
+          </div>
+        </div>
+        <form id="chat-form">
+          <input
+            id="chat-input"
+            placeholder="e.g. Which currency looks strongest and why?"
+            autocomplete="off"
+          />
+          <button type="submit">Ask</button>
+        </form>
+        <div class="section-note">
+          Answers are grounded in DB rows shown above; without an API key you
+          get the raw snapshot.
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const $ = (id) => document.getElementById(id);
+      const fmt = (n, p = 2) => (n == null ? "—" : (+n).toFixed(p));
+      const sign = (n) => (n > 0 ? "pos" : n < 0 ? "neg" : "");
+      const esc = (s) =>
+        String(s ?? "").replace(
+          /[&<>"]/g,
+          (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c],
+        );
+
+      async function get(url) {
+        // one retry after ~1.5s — a transient backend restart/blip shouldn't
+        // permanently blank a panel until manual refresh
+        for (let i = 0; i < 2; i++) {
+          try {
+            const r = await fetch(url);
+            if (r.ok) return r.json();
+            if (r.status < 500) return null;      // 4xx won't fix itself
+          } catch { /* fall through to retry */ }
+          if (i === 0) await new Promise(res => setTimeout(res, 1500));
+        }
+        return null;
+      }
+
+      function strengthBar(score) {
+        const pct = Math.min(Math.abs(score), 100) / 2;
+        const side = score >= 0 ? "left:50%;" : "right:50%;";
+        const color = score >= 0 ? "var(--green)" : "var(--red)";
+        return `<div class="bar"><span style="${side}width:${pct}%;background:${color}"></span></div>`;
+      }
+
+      async function loadStrength() {
+        const d = await get("/api/strength");
+        if (!d || !d.strengths.length) {
+          $("strength-body").innerHTML =
+            '<span class="muted">no data — run analyze strength</span>';
+          return;
+        }
+        $("strength-body").innerHTML =
+          d.strengths
+            .map((s) => {
+              const conf = s.components?._confidence;
+              const confTag =
+                conf != null
+                  ? ` <span class="tag conf" title="share of component weights present">conf ${fmt(conf * 100, 0)}%</span>`
+                  : "";
+              return `<div class="row"><span class="main"><span class="strength-cur">${s.currency}</span>${confTag}</span><span class="num ${sign(s.score)}">${s.score > 0 ? "+" : ""}${fmt(s.score, 1)}</span></div>${strengthBar(s.score)}`;
+            })
+            .join("") +
+          `<div class="section-note">as_of ${esc(d.as_of?.slice(0, 10))}</div>`;
+      }
+
+      async function loadStances() {
+        const d = await get("/api/stances");
+        if (!d || !d.stances.length) {
+          $("stances-body").innerHTML =
+            '<span class="muted">no scores — run nlp score</span>';
+          return;
+        }
+        const labelCls = (l) =>
+          /hawk/.test(l) ? "hawk" : /dov/.test(l) ? "dov" : "neutral";
+        $("stances-body").innerHTML = d.stances
+          .map(
+            (s) =>
+              `<div class="row"><b>${s.central_bank}/${s.currency}</b>
+     <span class="main"><span class="tag ${labelCls(s.label)}">${s.label}</span> <b class="num ${sign(s.score)}">${s.score > 0 ? "+" + s.score : s.score}</b>
+     ${s.shift_vs_prev != null ? `<span class="muted num"> Δ${fmt(s.shift_vs_prev, 0)}</span>` : ""}</span></div>
+     ${(s.evidence || [])[0]?.sentence ? `<div class="ev">“${esc(s.evidence[0].sentence.slice(0, 140))}”</div>` : ""}`,
+          )
+          .join("");
+      }
+
+      async function loadThemes() {
+        const d = await get("/api/themes?days=14");
+        if (!d || !d.themes.length) {
+          $("themes-body").innerHTML =
+            '<span class="muted">no themes — run nlp themes</span>';
+          return;
+        }
+        $("themes-body").innerHTML = d.themes
+          .map(
+            (t) =>
+              `<div class="theme-item"><div class="theme-head"><b>${t.currency}</b>
+     <span class="tag">${esc(t.theme)}</span>
+     <span class="tag ${t.sentiment > 0.15 ? "hawk" : t.sentiment < -0.15 ? "dov" : "neutral"}">${t.sentiment > 0 ? "+" : ""}${fmt(t.sentiment)}</span>
+     <span class="muted num">w=${fmt(t.weight)}</span></div>
+     ${(t.evidence || [])[0]?.sentence ? `<div class="ev">“${esc(t.evidence[0].sentence.slice(0, 140))}”</div>` : ""}</div>`,
+          )
+          .join("");
+      }
+
+      async function loadIdeas() {
+        const d = await get("/api/ideas?limit=10");
+        if (!d || !d.ideas.length) {
+          $("ideas-body").innerHTML =
+            '<span class="muted">no ideas — run analyze ideas</span>';
+          return;
+        }
+        $("ideas-body").innerHTML = d.ideas
+          .map(
+            (i) =>
+              `<div class="idea ${i.direction}">
+     <div class="idea-head"><span class="tag ${i.direction}">${i.direction.toUpperCase()}</span>
+       <span class="idea-pair">${i.pair}</span>
+       <span class="tag">${esc(i.status)}</span>
+       <span class="tag conf">rr ${fmt(i.risk_reward, 1)}</span></div>
+     <div class="levels"><div><label>entry</label><b>${fmt(i.entry_low, 5)}–${fmt(i.entry_high, 5)}</b></div>
+       <div><label>stop</label><b>${fmt(i.stop, 5)}</b></div>
+       <div><label>target</label><b>${fmt(i.target, 5)}</b></div></div>
+     <div class="rationale">${esc(i.rationale)}</div>
+     <div class="muted">invalidation: ${esc(i.invalidation)}</div>
+     ${(i.key_risks || []).map((r) => `<div class="risk">⚠ ${esc(r)}</div>`).join("")}
+     <div class="note">${esc(i.disclaimer)}</div></div>`,
+          )
+          .join("");
+      }
+
+      async function loadDocs() {
+        const t = $("doc-type").value;
+        const d = await get("/api/docs" + (t ? "?doc_type=" + t : ""));
+        if (!d || !d.documents.length) {
+          $("docs-body").innerHTML =
+            '<span class="muted">no documents — run ingest docs</span>';
+          return;
+        }
+        $("docs-body").innerHTML = d.documents
+          .slice(0, 15)
+          .map((x) => {
+            const title = x.url
+              ? `<a class="doc-title" href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.title)}</a>`
+              : `<span class="doc-title">${esc(x.title)}</span>`;
+            return `<div class="doc">${title}
+     <div class="doc-meta"><span class="tag">${x.doc_type}</span>
+     <span class="tag src" title="data source">${esc(x.source)}</span>
+     <span class="muted num">${x.published_at.slice(0, 10)}</span></div></div>`;
+          })
+          .join("");
+      }
+
+      $("chat-form").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const q = $("chat-input").value.trim();
+        if (!q) return;
+        $("chat-input").value = "";
+        const log = $("chat-log");
+        log.insertAdjacentHTML(
+          "beforeend",
+          `<div class="msg user">${esc(q)}</div>`,
+        );
+        log.insertAdjacentHTML(
+          "beforeend",
+          `<div class="msg bot pending" id="pending">thinking…</div>`,
+        );
+        log.scrollTop = log.scrollHeight;
+        const btn = document.querySelector("#chat-form button");
+        btn.disabled = true;
+        try {
+          const r = await fetch("/api/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ message: q }),
+          });
+          const d = r.ok ? await r.json() : { answer: "request failed" };
+          const meta = [
+            d.mode === "agent"
+              ? d.verified
+                ? '<span class="tag hawk">verified</span>'
+                : '<span class="tag dov">unverified</span>'
+              : '<span class="tag neutral">offline</span>',
+            ...(d.steps || []).length
+              ? [`<span class="tag src">tools: ${esc(d.steps.join(" · "))}</span>`]
+              : [],
+            ...(d.warnings || []).map((w) => `<div class="risk">⚠ ${esc(w)}</div>`),
+          ];
+          $(`pending`).outerHTML =
+            `<div class="msg bot">${esc(d.answer)}${meta.length ? `<div class="note" style="margin-top:8px">${meta.join(" ")}</div>` : ""}</div>`;
+        } catch {
+          $("pending").outerHTML = `<div class="msg bot">request failed — server unreachable</div>`;
+        } finally {
+          btn.disabled = false;
+        }
+        log.scrollTop = log.scrollHeight;
+      });
+
+      function tickClock() {
+        $("clock").textContent =
+          new Date().toISOString().slice(0, 19).replace("T", " ") + " UTC";
+      }
+      tickClock();
+      setInterval(tickClock, 1000);
+      async function loadStatus() {
+        const d = await get("/api/status");
+        const bar = $("healthbar");
+        if (!d || !d.feeds) {
+          bar.innerHTML = '<span class="muted">data health unavailable</span>';
+          return;
+        }
+        const feeds = Object.entries(d.feeds)
+          .filter(([, f]) => f.latest !== undefined)
+          .map(([name, f]) => {
+            const chip = f.stale
+              ? `<span class="tag stale" title="newest row ${f.age_hours}h old">STALE</span>`
+              : `<span class="tag fresh" title="newest row ${f.age_hours ?? "—"}h old">fresh</span>`;
+            const age = f.age_hours == null ? "no data" : `${f.age_hours}h`;
+            return `<span class="feed">${name} ${chip} ${age}</span>`;
+          })
+          .join('<span class="muted">·</span>');
+        const mkt = d.market_open
+          ? '<span class="tag mkt">market open</span>'
+          : '<span class="tag mkt">market closed (weekend)</span>';
+        bar.innerHTML = `${mkt} ${feeds}`;
+      }
+
+      [loadStrength, loadStances, loadThemes, loadIdeas, loadDocs, loadStatus].forEach(
+        (f) => f(),
+      );
+      setInterval(loadStrength, 60000);
+      setInterval(loadStatus, 60000);
+    </script>
+  </body>
+</html>

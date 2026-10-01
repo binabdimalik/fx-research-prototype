@@ -1,0 +1,22 @@
+[Unit]
+# API + dashboard: uvicorn serving fxterminal.api.main:app
+# Install: copy to /etc/systemd/system/, edit paths/env, daemon-reload, enable.
+Description=fxterminal API + dashboard
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+# Run as your user — this is a local research tool, not a public service.
+User=%i
+WorkingDirectory=/home/%i/new_era
+EnvironmentFile=/home/%i/new_era/.env
+ExecStart=/home/%i/new_era/.venv/bin/uvicorn fxterminal.api.main:app \
+    --host 127.0.0.1 --port 8000
+Restart=on-failure
+RestartSec=5
+# Loopback only — no auth layer yet, do NOT bind 0.0.0.0.
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

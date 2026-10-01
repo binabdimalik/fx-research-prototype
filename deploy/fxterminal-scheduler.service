@@ -1,0 +1,19 @@
+[Unit]
+# Daily pipeline scheduler: ingest -> nlp -> analytics -> alerts.
+# Install: copy to /etc/systemd/system/, edit paths/env, daemon-reload, enable.
+Description=fxterminal pipeline scheduler
+After=network.target postgresql.service fxterminal-api.service
+
+[Service]
+Type=simple
+User=%i
+WorkingDirectory=/home/%i/new_era
+EnvironmentFile=/home/%i/new_era/.env
+ExecStart=/home/%i/new_era/.venv/bin/fxterminal serve
+Restart=on-failure
+RestartSec=60
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
